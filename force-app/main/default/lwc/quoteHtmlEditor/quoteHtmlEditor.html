@@ -1,0 +1,22 @@
+<template>
+    <lightning-card
+        title="Napelemes Ajánlat Szerkesztése"
+        icon-name="standard:text_template">
+
+        <div class="slds-m-around_medium">
+
+            <div
+                class="html-editor"
+                contenteditable="true"
+                lwc:dom="manual"
+                oninput={handleInput}
+                onblur={handleBlur}>
+            </div>
+
+            <div class="slds-m-top_medium slds-text-color_weak">
+                Az ajánlat szövege és táblázatai közvetlenül szerkeszthetők.
+            </div>
+
+        </div>
+    </lightning-card>
+</template>

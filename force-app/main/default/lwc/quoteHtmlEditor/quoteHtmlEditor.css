@@ -1,0 +1,47 @@
+.html-editor {
+    min-height: 400px;
+    padding: 16px;
+    border: 1px solid #c9c9c9;
+    border-radius: 4px;
+    background: #fff;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: normal; /* ne őrizze meg a forrás sortöréseit */
+}
+
+.html-editor table,
+.html-editor thead,
+.html-editor tbody,
+.html-editor tr,
+.html-editor th,
+.html-editor td {
+    white-space: normal;
+}
+
+.html-editor:focus {
+    outline: 2px solid #0176d3;
+    outline-offset: 1px;
+}
+
+/* Az SLDS reset nullázza a margókat és a listajeleket, ezeket pótoljuk */
+.html-editor h1,
+.html-editor h2,
+.html-editor h3 {
+    margin: 16px 0 8px;
+}
+
+.html-editor p {
+    margin: 0 0 10px;
+}
+
+.html-editor ol {
+    margin: 0 0 10px 24px;
+    padding: 0;
+    list-style: decimal;
+}
+
+.html-editor ul {
+    margin: 0 0 10px 24px;
+    padding: 0;
+    list-style: disc;
+}

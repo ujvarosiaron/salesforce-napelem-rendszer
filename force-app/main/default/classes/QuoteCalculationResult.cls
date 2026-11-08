@@ -16,4 +16,8 @@ public class QuoteCalculationResult {
     public Decimal logisticsCost { get; set; }
     public Map<String, ProductCatalog__c> serviceMap { get; set; }
     public Decimal grossTotal { get; set; }
+    public Decimal yearlyGeneration { get; set; }
+    public Decimal yearlySavings { get; set; }
+    public Decimal netInvestment { get; set; }
+    public Decimal paybackYears { get; set; }
 }

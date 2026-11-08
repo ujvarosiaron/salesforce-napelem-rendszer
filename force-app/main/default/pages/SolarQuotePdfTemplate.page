@@ -1,0 +1,29 @@
+<apex:page controller="SolarQuotePdfController" renderAs="pdf" applyHtmlTag="false" showHeader="false" sidebar="false">
+    <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 30px; color: #333; }
+                .header { text-align: center; border-bottom: 2px solid #004085; padding-bottom: 15px; margin-bottom: 20px; }
+                .title { font-size: 24px; font-weight: bold; color: #004085; }
+                .subtitle { font-size: 14px; color: #666; margin-top: 5px; }
+                .section { margin-top: 25px; }
+                .section-title { font-size: 16px; font-weight: bold; color: #004085; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
+                .body-text { font-size: 14px; line-height: 1.6; text-align: justify; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">Solar Corp Hungary</div>
+                <div class="subtitle">Személyre szabott napelemes beruházási árajánlat</div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Ajánlati Részletek és Műszaki Leírás</div>
+                <!-- Az értékesítő által a Screen Flow-ban szerkesztett Rich Text szöveg megjelenítése -->
+                <div class="body-text">
+                    <apex:outputText value="{!formattedQuoteBody}" escape="false"/>
+                </div>
+            </div>
+        </body>
+    </html>
+</apex:page>
