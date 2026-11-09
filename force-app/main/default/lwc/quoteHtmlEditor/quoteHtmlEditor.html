@@ -5,16 +5,133 @@
 
         <div class="slds-m-around_medium">
 
+            <!-- A mousedown alapértelmezett működését letiltjuk, hogy a kijelölés megmaradjon -->
+            <div class="toolbar" onmousedown={handleToolbarMouseDown}>
+
+                <div class="toolbar-group">
+                    <select class="toolbar-select" title="Bekezdés stílusa" onchange={handleBlockChange}>
+                        <option value="">Stílus</option>
+                        <option value="p">Normál szöveg</option>
+                        <option value="h1">Címsor 1</option>
+                        <option value="h2">Címsor 2</option>
+                        <option value="h3">Címsor 3</option>
+                        <option value="h4">Címsor 4</option>
+                    </select>
+                    <select class="toolbar-select" title="Betűtípus" onchange={handleFontFamily}>
+                        <option value="">Betűtípus</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                    </select>
+                    <select class="toolbar-select toolbar-select_small" title="Betűméret" onchange={handleFontSize}>
+                        <option value="">Méret</option>
+                        <option value="10">10</option>
+                        <option value="12">12</option>
+                        <option value="14">14</option>
+                        <option value="16">16</option>
+                        <option value="18">18</option>
+                        <option value="24">24</option>
+                        <option value="32">32</option>
+                    </select>
+                </div>
+
+                <div class="toolbar-group">
+                    <lightning-button-icon icon-name="utility:bold" size="small" variant="border-filled" alternative-text="Félkövér" title="Félkövér" data-cmd="bold" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:italic" size="small" variant="border-filled" alternative-text="Dőlt" title="Dőlt" data-cmd="italic" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:underline" size="small" variant="border-filled" alternative-text="Aláhúzott" title="Aláhúzott" data-cmd="underline" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:strikethrough" size="small" variant="border-filled" alternative-text="Áthúzott" title="Áthúzott" data-cmd="strikeThrough" onclick={handleCommand}></lightning-button-icon>
+                </div>
+
+                <div class="toolbar-group">
+                    <label class="color-label" title="Betűszín">
+                        A
+                        <input type="color" class="color-input" value="#000000" data-type="fore" onchange={handleColor} />
+                    </label>
+                    <label class="color-label" title="Kiemelés színe">
+                        <span class="color-highlight">ab</span>
+                        <input type="color" class="color-input" value="#ffff00" data-type="back" onchange={handleColor} />
+                    </label>
+                </div>
+
+                <div class="toolbar-group">
+                    <lightning-button-menu
+                        icon-name="utility:left_align_text"
+                        alternative-text="Igazítás"
+                        title="Igazítás"
+                        variant="border-filled"
+                        menu-alignment="auto"
+                        onselect={handleAlignMenu}>
+                        <lightning-menu-item value="justifyLeft" label="Balra zárt" prefix-icon-name="utility:left_align_text"></lightning-menu-item>
+                        <lightning-menu-item value="justifyCenter" label="Középre zárt" prefix-icon-name="utility:center_align_text"></lightning-menu-item>
+                        <lightning-menu-item value="justifyRight" label="Jobbra zárt" prefix-icon-name="utility:right_align_text"></lightning-menu-item>
+                        <lightning-menu-item value="justifyFull" label="Sorkizárt" prefix-icon-name="utility:justify_text"></lightning-menu-item>
+                    </lightning-button-menu>
+                    <lightning-button-icon icon-name="utility:richtextbulletedlist" size="small" variant="border-filled" alternative-text="Felsorolás" title="Felsorolás" data-cmd="insertUnorderedList" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:richtextnumberedlist" size="small" variant="border-filled" alternative-text="Számozott lista" title="Számozott lista" data-cmd="insertOrderedList" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:richtextoutdent" size="small" variant="border-filled" alternative-text="Behúzás csökkentése" title="Behúzás csökkentése" data-cmd="outdent" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:richtextindent" size="small" variant="border-filled" alternative-text="Behúzás növelése" title="Behúzás növelése" data-cmd="indent" onclick={handleCommand}></lightning-button-icon>
+                </div>
+
+                <div class="toolbar-group">
+                    <lightning-button-icon icon-name="utility:link" size="small" variant="border-filled" alternative-text="Hivatkozás" title="Hivatkozás beszúrása / eltávolítása" onclick={handleLinkToggle}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:remove_formatting" size="small" variant="border-filled" alternative-text="Formázás törlése" title="Formázás törlése" data-cmd="removeFormat" onclick={handleCommand}></lightning-button-icon>
+                </div>
+
+                <div class="toolbar-group">
+                    <lightning-button-menu
+                        icon-name="utility:table"
+                        alternative-text="Táblázat"
+                        title="Táblázat szerkesztése (előbb kattints egy cellába)"
+                        variant="border-filled"
+                        menu-alignment="auto"
+                        onselect={handleTableMenu}>
+                        <lightning-menu-item value="rowBefore" label="Sor beszúrása fölé"></lightning-menu-item>
+                        <lightning-menu-item value="rowAfter" label="Sor beszúrása alá"></lightning-menu-item>
+                        <lightning-menu-item value="colBefore" label="Oszlop beszúrása balra"></lightning-menu-item>
+                        <lightning-menu-item value="colAfter" label="Oszlop beszúrása jobbra"></lightning-menu-item>
+                        <lightning-menu-item value="deleteRow" label="Sor törlése"></lightning-menu-item>
+                        <lightning-menu-item value="deleteCol" label="Oszlop törlése"></lightning-menu-item>
+                        <lightning-menu-item value="deleteTable" label="Táblázat törlése"></lightning-menu-item>
+                    </lightning-button-menu>
+                </div>
+
+                <div class="toolbar-group">
+                    <lightning-button-icon icon-name="utility:undo" size="small" variant="border-filled" alternative-text="Visszavonás" title="Visszavonás" data-cmd="undo" onclick={handleCommand}></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:redo" size="small" variant="border-filled" alternative-text="Újra" title="Újra" data-cmd="redo" onclick={handleCommand}></lightning-button-icon>
+                </div>
+            </div>
+
+            <template lwc:if={showLink}>
+                <div class="link-panel">
+                    <lightning-input
+                        class="link-input"
+                        type="url"
+                        variant="label-hidden"
+                        label="Webcím"
+                        placeholder="https://pelda.hu"
+                        value={linkUrl}
+                        onchange={handleLinkInput}>
+                    </lightning-input>
+                    <lightning-button label="Beszúrás" variant="brand" size="small" onclick={handleLinkInsert}></lightning-button>
+                    <lightning-button label="Eltávolítás" size="small" data-cmd="unlink" onclick={handleLinkRemove}></lightning-button>
+                    <lightning-button label="Mégse" size="small" onclick={handleLinkToggle}></lightning-button>
+                </div>
+            </template>
+
             <div
                 class="html-editor"
                 contenteditable="true"
                 lwc:dom="manual"
                 oninput={handleInput}
+                onfocus={handleFocus}
                 onblur={handleBlur}>
             </div>
 
             <div class="slds-m-top_medium slds-text-color_weak">
-                Az ajánlat szövege és táblázatai közvetlenül szerkeszthetők.
+                Az ajánlat szövege és táblázatai közvetlenül szerkeszthetők. A formázáshoz jelöld ki a szöveget, táblázatsor/oszlop műveletekhez kattints egy cellába.
             </div>
 
         </div>

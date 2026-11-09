@@ -1,12 +1,140 @@
+/* ---------- Eszköztár ---------- */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 8px;
+    background: #f3f3f3;
+    border: 1px solid #c9c9c9;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 12px;
+    border-right: 1px solid #d8d8d8;
+}
+
+.toolbar-group:last-child {
+    border-right: none;
+    padding-right: 0;
+}
+
+.toolbar-select {
+    height: 32px;
+    padding: 0 6px;
+    border: 1px solid #c9c9c9;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.toolbar-select_small {
+    width: 70px;
+}
+
+.color-label {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #c9c9c9;
+    border-radius: 4px;
+    background: #fff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.color-highlight {
+    background: #ffff00;
+    padding: 0 2px;
+}
+
+.color-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.link-panel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: #fafaf9;
+    border: 1px solid #c9c9c9;
+    border-bottom: none;
+}
+
+.link-input {
+    flex: 1;
+}
+
+/* ---------- Szerkesztő ---------- */
 .html-editor {
     min-height: 400px;
     padding: 16px;
     border: 1px solid #c9c9c9;
-    border-radius: 4px;
+    border-radius: 0 0 4px 4px;
     background: #fff;
-    line-height: 1.5;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
     overflow-x: auto;
-    white-space: normal; /* ne őrizze meg a forrás sortöréseit */
+    white-space: normal;
+}
+
+.html-editor:focus {
+    outline: 2px solid #0176d3;
+    outline-offset: 1px;
+}
+
+/* Az SLDS reset nullázza a címsorok méretét, margóit és a listajeleket, ezeket pótoljuk */
+.html-editor h1 { font-size: 28px; font-weight: bold; margin: 16px 0 8px; }
+.html-editor h2 { font-size: 22px; font-weight: bold; margin: 16px 0 8px; }
+.html-editor h3 { font-size: 18px; font-weight: bold; margin: 14px 0 6px; }
+.html-editor h4 { font-size: 16px; font-weight: bold; margin: 12px 0 6px; }
+
+.html-editor p {
+    margin: 0 0 10px;
+}
+
+.html-editor b,
+.html-editor strong {
+    font-weight: bold;
+}
+
+.html-editor i,
+.html-editor em {
+    font-style: italic;
+}
+
+.html-editor a {
+    color: #0176d3;
+    text-decoration: underline;
+}
+
+.html-editor ol {
+    margin: 0 0 10px;
+    padding-left: 24px;
+    list-style: decimal;
+}
+
+.html-editor ul {
+    margin: 0 0 10px;
+    padding-left: 24px;
+    list-style: disc;
 }
 
 .html-editor table,
@@ -16,32 +144,4 @@
 .html-editor th,
 .html-editor td {
     white-space: normal;
-}
-
-.html-editor:focus {
-    outline: 2px solid #0176d3;
-    outline-offset: 1px;
-}
-
-/* Az SLDS reset nullázza a margókat és a listajeleket, ezeket pótoljuk */
-.html-editor h1,
-.html-editor h2,
-.html-editor h3 {
-    margin: 16px 0 8px;
-}
-
-.html-editor p {
-    margin: 0 0 10px;
-}
-
-.html-editor ol {
-    margin: 0 0 10px 24px;
-    padding: 0;
-    list-style: decimal;
-}
-
-.html-editor ul {
-    margin: 0 0 10px 24px;
-    padding: 0;
-    list-style: disc;
 }
