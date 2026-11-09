@@ -1,0 +1,69 @@
+<template>
+    <lightning-card title="Ajánlat küldése e-mailben" icon-name="standard:email">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+
+            <template lwc:if={sent}>
+                <div class="slds-text-align_center slds-p-around_large">
+                    <lightning-icon icon-name="utility:success" variant="success" size="small"></lightning-icon>
+                    <p class="slds-text-heading_small slds-m-top_small">Az e-mail elküldve.</p>
+                    <p class="slds-text-color_weak">Megtalálod a Lead tevékenységei között.</p>
+                </div>
+            </template>
+
+            <template lwc:else>
+                <template lwc:if={errorMessage}>
+                    <div class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small" role="alert">
+                        <span>{errorMessage}</span>
+                    </div>
+                </template>
+
+                <lightning-input
+                    type="email"
+                    label="Címzett"
+                    value={toAddress}
+                    onchange={handleToChange}
+                    required>
+                </lightning-input>
+
+                <lightning-input
+                    type="text"
+                    label="Tárgy"
+                    value={subject}
+                    onchange={handleSubjectChange}
+                    required>
+                </lightning-input>
+
+                <div class="slds-m-top_small">
+                    <lightning-input-rich-text
+                        label="Üzenet"
+                        value={body}
+                        onchange={handleBodyChange}>
+                    </lightning-input-rich-text>
+                </div>
+
+                <template lwc:if={attachmentName}>
+                    <div class="slds-m-top_small slds-grid slds-grid_vertical-align-center">
+                        <lightning-icon icon-name="doctype:pdf" size="small" class="slds-m-right_x-small"></lightning-icon>
+                        <span class="slds-text-body_regular">{attachmentName}</span>
+                        <span class="slds-text-color_weak slds-m-left_x-small">(csatolva)</span>
+                    </div>
+                </template>
+
+                <div class="slds-m-top_medium slds-grid slds-grid_align-end">
+                    <lightning-button
+                        variant="brand"
+                        label="E-mail küldése"
+                        icon-name="utility:send"
+                        onclick={handleSend}
+                        disabled={isSending}>
+                    </lightning-button>
+                </div>
+
+                <template lwc:if={isSending}>
+                    <lightning-spinner alternative-text="Küldés..." size="small"></lightning-spinner>
+                </template>
+            </template>
+
+        </div>
+    </lightning-card>
+</template>
