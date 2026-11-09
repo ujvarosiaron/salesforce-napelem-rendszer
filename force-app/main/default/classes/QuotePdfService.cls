@@ -1,56 +1,217 @@
 public with sharing class QuotePdfService {
 
     public class PdfRequest {
-        @InvocableVariable(required=true label='Lead ID')
+
+        @InvocableVariable(
+            required=true
+            label='Lead ID'
+        )
         public Id leadId;
+
+        @InvocableVariable(
+            label='Quote Body'
+        )
+        public String quoteBody;
     }
 
     public class PdfResult {
-        @InvocableVariable(label='Generated ContentDocumentId')
+
+        @InvocableVariable(
+            label='Generated ContentDocumentId'
+        )
         public Id contentDocId;
     }
 
-    @InvocableMethod(label='Generate PDF & Save to Lead' category='Quote Automation')
-    public static List<PdfResult> generateAndSavePdf(List<PdfRequest> requests) {
-        List<PdfResult> results = new List<PdfResult>();
+    /**
+     * A Flow által meghívott PDF-generáló művelet.
+     */
+    @InvocableMethod(
+        label='Generate PDF & Save to Lead'
+        category='Quote Automation'
+    )
+    public static List<PdfResult> generateAndSavePdf(
+        List<PdfRequest> requests
+    ) {
+
+        if (requests == null || requests.isEmpty()) {
+            return new List<PdfResult>();
+        }
+
+        // 1. Lead ID-k összegyűjtése.
+        Set<Id> leadIds = new Set<Id>();
 
         for (PdfRequest req : requests) {
-            // 1. Friss, szerkesztett HTML kiolvasása a Lead adatbázisból
-            Lead targetLead = [SELECT Formatted_Quote_Body__c, Email FROM Lead WHERE Id = :req.leadId LIMIT 1];
 
-            PageReference pdfPage = Page.SolarQuotePdfTemplate;
-            pdfPage.getParameters().put('id', req.leadId);
-            
-            Blob pdfBlob;
-            if (Test.isRunningTest()) {
-                pdfBlob = Blob.valueOf('Test PDF Content');
-            } else {
-                pdfBlob = pdfPage.getContentAsPDF();
+            if (req == null || req.leadId == null) {
+                throw new PdfGenerationException(
+                    'A PDF generálásához szükséges a Lead ID.'
+                );
             }
 
-            // 2. Fájl mentése ContentVersion-ként
+            leadIds.add(req.leadId);
+        }
+
+        // 2. Lead rekordok egyszeri lekérdezése.
+        Map<Id, Lead> existingLeads = new Map<Id, Lead>([
+            SELECT Id, Formatted_Quote_Body__c
+            FROM Lead
+            WHERE Id IN :leadIds
+        ]);
+
+        if (existingLeads.size() != leadIds.size()) {
+            throw new PdfGenerationException(
+                'A megadott Lead rekordok közül legalább egy nem található.'
+            );
+        }
+
+        // 3. A módosított Lead rekordok gyűjtése.
+        Map<Id, Lead> leadsToUpdate = new Map<Id, Lead>();
+
+        // 4. PDF fájlok előkészítése.
+        List<ContentVersion> versionsToInsert =
+            new List<ContentVersion>();
+
+        // A ContentVersion rekordokhoz tartozó Flow indexek.
+        List<Integer> requestIndexes = new List<Integer>();
+
+        // A Flow eredményeinek előkészítése.
+        List<PdfResult> results = new List<PdfResult>();
+
+        for (Integer i = 0; i < requests.size(); i++) {
+
+            PdfRequest req = requests[i];
+
+            Lead existingLead = existingLeads.get(req.leadId);
+
+            String body = req.quoteBody;
+
+            // Ha nem érkezett új HTML a Flow-ból,
+            // akkor a korábban mentett változatot használjuk.
+            if (String.isBlank(body)) {
+
+                if (leadsToUpdate.containsKey(req.leadId)) {
+                    body = leadsToUpdate.get(req.leadId)
+                        .Formatted_Quote_Body__c;
+                } else {
+                    body = existingLead.Formatted_Quote_Body__c;
+                }
+
+            } else {
+
+                // A szerkesztett HTML mentésre vár.
+                leadsToUpdate.put(
+                    req.leadId,
+                    new Lead(
+                        Id = req.leadId,
+                        Formatted_Quote_Body__c = body
+                    )
+                );
+            }
+
+            if (String.isBlank(body)) {
+                body = '<p>Nincs megadott ajánlati leírás.</p>';
+            }
+
+            // A különálló sablonosztály előállítja a teljes HTML-t.
+            Blob pdfBlob;
+
+            if (Test.isRunningTest()) {
+
+                // A Salesforce PDF renderelőjét unit tesztben
+                // nem futtatjuk le.
+                pdfBlob = Blob.valueOf('Test PDF Content');
+
+            } else {
+
+                String completeHtml =
+                    QuotePdfTemplate.render(body);
+
+                pdfBlob = Blob.toPdf(completeHtml);
+            }
+
+            // PDF fájl létrehozásának előkészítése.
             ContentVersion cv = new ContentVersion();
-            cv.Title = 'Napelem_Arajanlat_' + System.now().format('yyyyMMdd_HHmm') + '.pdf';
+
+            cv.Title =
+                'Napelem_Arajanlat_' +
+                System.now().format('yyyyMMdd_HHmmss') +
+                '_' + String.valueOf(i + 1);
+
             cv.PathOnClient = 'Napelem_Arajanlat.pdf';
             cv.VersionData = pdfBlob;
             cv.IsMajorVersion = true;
-            insert cv;
 
-            Id contentDocId = [SELECT ContentDocumentId FROM ContentVersion WHERE Id = :cv.Id].ContentDocumentId;
+            versionsToInsert.add(cv);
+            requestIndexes.add(i);
 
-            // 3. Összekötés a Lead Files kapcsolódó listájával
+            results.add(new PdfResult());
+        }
+
+        // 5. Lead rekordok frissítése.
+        if (!leadsToUpdate.isEmpty()) {
+            update leadsToUpdate.values();
+        }
+
+        // 6. PDF fájlok mentése Salesforce Files-ba.
+        insert versionsToInsert;
+
+        // 7. A ContentDocument ID-k lekérdezése.
+        Set<Id> versionIds = new Set<Id>();
+
+        for (ContentVersion cv : versionsToInsert) {
+            versionIds.add(cv.Id);
+        }
+
+        Map<Id, ContentVersion> insertedVersions =
+            new Map<Id, ContentVersion>([
+                SELECT Id, ContentDocumentId
+                FROM ContentVersion
+                WHERE Id IN :versionIds
+            ]);
+
+        // 8. A fájlok Lead rekordokhoz kapcsolása.
+        List<ContentDocumentLink> linksToInsert =
+            new List<ContentDocumentLink>();
+
+        for (Integer i = 0; i < versionsToInsert.size(); i++) {
+
+            ContentVersion cv = versionsToInsert[i];
+
+            Integer requestIndex = requestIndexes[i];
+
+            Id leadId = requests[requestIndex].leadId;
+
+            ContentVersion insertedVersion =
+                insertedVersions.get(cv.Id);
+
+            if (insertedVersion == null ||
+                insertedVersion.ContentDocumentId == null) {
+
+                throw new PdfGenerationException(
+                    'Nem sikerült lekérni a létrehozott PDF fájl azonosítóját.'
+                );
+            }
+
+            Id contentDocId = insertedVersion.ContentDocumentId;
+
             ContentDocumentLink cdl = new ContentDocumentLink();
+
             cdl.ContentDocumentId = contentDocId;
-            cdl.LinkedEntityId = req.leadId;
+            cdl.LinkedEntityId = leadId;
             cdl.ShareType = 'V';
             cdl.Visibility = 'AllUsers';
-            insert cdl;
 
-            // 4. Eredmény visszaadása a Flow-nak (hogy a Flow csatolni tudja a fájlt)
-            PdfResult res = new PdfResult();
-            res.contentDocId = contentDocId;
-            results.add(res);
+            linksToInsert.add(cdl);
+
+            PdfResult result = results[requestIndex];
+            result.contentDocId = contentDocId;
         }
+
+        insert linksToInsert;
+
         return results;
+    }
+
+    public class PdfGenerationException extends Exception {
     }
 }

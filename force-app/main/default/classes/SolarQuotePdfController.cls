@@ -1,16 +1,42 @@
+
 public with sharing class SolarQuotePdfController {
-    public String formattedQuoteBody { get; set; }
+
+    public String formattedQuoteBody { get; private set; }
 
     public SolarQuotePdfController() {
-        Id leadId = ApexPages.currentPage().getParameters().get('id');
-        if (leadId != null) {
-            // Itt lekérdezheted a Lead-hez eltárolt szerkesztett szöveget, 
-            // vagy átadhatod a Quote objektum mezőjéből.
-            Lead l = [SELECT Formatted_Quote_Body__c FROM Lead WHERE Id = :leadId LIMIT 1];
-            formattedQuoteBody = l.Formatted_Quote_Body__c;
+
+        formattedQuoteBody = '';
+
+        String leadIdParam =
+            ApexPages.currentPage().getParameters().get('id');
+
+        if (String.isNotBlank(leadIdParam)) {
+
+            try {
+
+                Id leadId = (Id) leadIdParam;
+
+                List<Lead> leads = [
+                    SELECT Id, Formatted_Quote_Body__c
+                    FROM Lead
+                    WHERE Id = :leadId
+                    LIMIT 1
+                ];
+
+                if (!leads.isEmpty()) {
+                    formattedQuoteBody =
+                        leads[0].Formatted_Quote_Body__c;
+                }
+
+            } catch (Exception e) {
+
+                formattedQuoteBody = '';
+            }
         }
-        if (String.isEmpty(formattedQuoteBody)) {
-            formattedQuoteBody = 'Nincs megadott ajánlati leírás.';
+
+        if (String.isBlank(formattedQuoteBody)) {
+            formattedQuoteBody =
+                'Nincs megadott ajánlati leírás.';
         }
     }
 }

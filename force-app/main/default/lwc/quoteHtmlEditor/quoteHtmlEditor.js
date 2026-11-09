@@ -207,6 +207,48 @@ export default class QuoteHtmlEditor extends LightningElement {
                 p.style.margin = '0 0 10px';
             }
         });
+
+        editor.querySelectorAll('table').forEach((table) => {
+    if (!table.style.width) {
+        table.style.width = '100%';
+    }
+
+    if (!table.style.borderCollapse) {
+        table.style.borderCollapse = 'collapse';
+    }
+
+    if (!table.style.margin) {
+        table.style.margin = '18px 0';
+    }
+
+    table.querySelectorAll('th').forEach((th) => {
+        if (!th.style.backgroundColor) {
+            th.style.backgroundColor = '#2c3e50';
+        }
+
+        if (!th.style.color) {
+            th.style.color = '#ffffff';
+        }
+
+        if (!th.style.padding) {
+            th.style.padding = '10px 12px';
+        }
+
+        if (!th.style.border) {
+            th.style.border = '1px solid #dcdde1';
+        }
+    });
+
+    table.querySelectorAll('td').forEach((td) => {
+        if (!td.style.padding) {
+            td.style.padding = '9px 12px';
+        }
+
+        if (!td.style.border) {
+            td.style.border = '1px solid #dcdde1';
+        }
+    });
+    });
     }
 
     // ---------------------------------------------------------------
@@ -507,6 +549,7 @@ export default class QuoteHtmlEditor extends LightningElement {
 
     handleInput() {
         this.dirty = true;
+        this.publish();
     }
 
     handleBlur() {
