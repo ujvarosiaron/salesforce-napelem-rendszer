@@ -5,19 +5,42 @@ public with sharing class QuoteCalculatorService {
         public String leadId;
     }
 
+    public class FlowResult {
+        @InvocableVariable(label='Sikeres-e a kalkuláció')
+        public Boolean isSuccess;
+
+        @InvocableVariable(label='Hibaüzenet, ha van')
+        public String errorMessage;
+    }
+
     @InvocableMethod(label='Napelem Ajánlat Előkalkuláció és Generálás' description='Moduláris kalkuláció, adatmentés és Prompt Template AI hívás.')
-    public static void generateQuote(List<FlowInput> inputs) {
+    public static List<FlowResult> generateQuote(List<FlowInput> inputs) {
+        List<FlowResult> results = new List<FlowResult>();
+        FlowResult res = new FlowResult();
+        res.isSuccess = true;
+        res.errorMessage = '';
+
         if (inputs == null || inputs.isEmpty()) {
-            return;
+            res.isSuccess = false;
+            res.errorMessage = 'Nincs bemeneti adat.';
+            results.add(res);
+            return results;
         }
 
         Set<Id> leadIds = extractLeadIds(inputs);
-        if (leadIds.isEmpty()) return;
+        if (leadIds.isEmpty()) {
+            res.isSuccess = false;
+            res.errorMessage = 'Érvénytelen Lead ID.';
+            results.add(res);
+            return results;
+        }
 
         Map<Id, Lead> leadsMap = QuoteDataSelector.getLeads(leadIds);
-
         if (leadsMap.isEmpty()) {
-            throw new AuraHandledException('HIBA: A Lead nem található az adatbázisban ezzel az ID-val: ' + leadIds);
+            res.isSuccess = false;
+            res.errorMessage = 'A Lead nem található az adatbázisban.';
+            results.add(res);
+            return results;
         }
 
         List<Solar_Panel__c> panels = QuoteDataSelector.getPanels();
@@ -39,22 +62,23 @@ public with sharing class QuoteCalculatorService {
             }
         }
 
+        if (panels.isEmpty() || batteries.isEmpty() || protBox == null || cable == null) {
+            res.isSuccess = false;
+            res.errorMessage = 'DIAGNOSZTIKA: Hiányzó alapvető hardver elem a katalógusban (napelem, akkumulátor, védelmi doboz vagy kábelezés).';
+            results.add(res);
+            return results;
+        }
+
         List<Quote__c> quotesToInsert = new List<Quote__c>();
         Map<Id, QuoteCalculationResult> leadContextMap = new Map<Id, QuoteCalculationResult>();
 
         for (Lead l : leadsMap.values()) {
-            // Megengedőbb feltétel: ha valami hiányzik, alapértelmezett értéket adunk vagy logolunk, de nem omlik össze feltétlenül
             Decimal monthlyCons = (l.Havi_fogyasztas__c != null && l.Havi_fogyasztas__c > 0) ? l.Havi_fogyasztas__c : 300.0;
-            String phase = (l.Fazisszam__c != null) ? l.Fazisszam__c : 'Háromfázisú (szabványos)';
             String roofType = (l.Tetofedes_tipusa__c != null) ? l.Tetofedes_tipusa__c : 'Cseréptető';
 
-            if (panels.isEmpty() || batteries.isEmpty() || protBox == null || cable == null) {
-                throw new AuraHandledException('DIAGNOSZTIKA: Hiányzó hardver elem a katalógusban.');
-            }
-
             String targetPhase = QuoteCalculationEngine.validateLeadAndGetPhase(l);
-            if (targetPhase == null) {
-                targetPhase = '3'; // Biztonságos fallback
+            if (String.isBlank(targetPhase)) {
+                targetPhase = (l.Fazisszam__c != null) ? l.Fazisszam__c : '1'; 
             }
 
             Decimal yearlyConsumption = monthlyCons * 12;
@@ -65,8 +89,21 @@ public with sharing class QuoteCalculatorService {
             Inverter__c inverterDetails = QuoteCalculationEngine.findInverter(invertersList, targetPhase, panelCount * panelkWp);
             Accessory__c accessoryDetails = QuoteCalculationEngine.findAccessory(accessoriesList, roofType);
 
-            if (inverterDetails == null || accessoryDetails == null) {
-                throw new AuraHandledException('DIAGNOSZTIKA: Hiányzó hardver elem az inverter vagy kiegészítő keresésekor.');
+            if (inverterDetails == null && accessoryDetails == null) {
+                res.isSuccess = false;
+                res.errorMessage = 'DIAGNOSZTIKA: Nincs a katalógusban ' + targetPhase + '-fázisú inverter ehhez a teljesítményhez (' + (panelCount * panelkWp).setScale(2) + ' kWp), valamint a(z) "' + roofType + '" tetőfedéshez tartozó kiegészítő sem.';
+                results.add(res);
+                return results;
+            } else if (inverterDetails == null) {
+                res.isSuccess = false;
+                res.errorMessage = 'DIAGNOSZTIKA: Nincs megfelelő ' + targetPhase + '-fázisú inverter a katalógusban a(z) ' + (panelCount * panelkWp).setScale(2) + ' kWp teljesítményű rendszerhez.';
+                results.add(res);
+                return results;
+            } else if (accessoryDetails == null) {
+                res.isSuccess = false;
+                res.errorMessage = 'DIAGNOSZTIKA: A katalógusból hiányzik a(z) "' + roofType + '" tetőfedés-típushoz tartozó rögzítési kiegészítő.';
+                results.add(res);
+                return results;
             }
 
             QuoteCalculationResult calcResult = QuoteCalculationEngine.calculateMetrics(
@@ -74,21 +111,27 @@ public with sharing class QuoteCalculatorService {
                 accessoryDetails, protBox, cable, panelCount, null
             );
 
-            Quote__c newQuote = QuoteBuilder.buildQuote(l.Id, calcResult);
-            quotesToInsert.add(newQuote);
+            if (calcResult.isSuccess == false) {
+                res.isSuccess = false;
+                res.errorMessage = calcResult.errorMessage;
+                results.add(res);
+                return results;
+            }
+
             leadContextMap.put(l.Id, calcResult);
+            quotesToInsert.add(QuoteBuilder.buildQuote(l.Id, calcResult));
         }
 
         Savepoint sp = Database.setSavepoint();
         try {
             if (!leadIds.isEmpty()) {
-                List<Quote__c> oldQuotes = [
+                List<Quote__c> allOldQuotes = [
                     SELECT Id FROM Quote__c 
                     WHERE Lead__c IN :leadIds 
                     AND Status__c IN ('Piszkozat', 'Elküldve', 'Elfogadva')
                 ];
-                if (!oldQuotes.isEmpty()) {
-                    Database.delete(oldQuotes, false);
+                if (!allOldQuotes.isEmpty()) {
+                    Database.delete(allOldQuotes, false);
                 }
             }
 
@@ -110,9 +153,14 @@ public with sharing class QuoteCalculatorService {
 
         } catch (Exception e) {
             Database.rollback(sp);
-            System.debug(LoggingLevel.ERROR, 'Hiba az ajánlatgenerálás során: ' + e.getMessage());
-            throw e;
+            res.isSuccess = false;
+            res.errorMessage = 'Hiba az adatbázis művelet során: ' + e.getMessage();
+            results.add(res);
+            return results;
         }
+
+        results.add(res);
+        return results;
     }
 
     private static Set<Id> extractLeadIds(List<FlowInput> inputs) {

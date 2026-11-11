@@ -65,6 +65,20 @@ public class QuoteCalculationEngine {
     }
 
     public static QuoteCalculationResult calculateMetrics(Decimal yearlyConsumption, String postalCode, Solar_Panel__c panel, Inverter__c inverter, Battery_Storage__c battery, Accessory__c accessory, ProductCatalog__c protBox, ProductCatalog__c cable, Integer panelCount, Map<String, ProductCatalog__c> serviceMap) {
+        QuoteCalculationResult result = new QuoteCalculationResult();
+
+        if (panel == null || inverter == null || battery == null || accessory == null || protBox == null || cable == null) {
+            result.isSuccess = false;
+            result.errorMessage = 'Hiányzó rendszerelem vagy hardverkomponens a katalógusban. Kérlek, ellenőrizd a törzsadatokat!';
+            return result;
+        }
+
+        if (yearlyConsumption == null || yearlyConsumption <= 0) {
+            result.isSuccess = false;
+            result.errorMessage = 'A becsült éves fogyasztás nem lehet nulla vagy negatív.';
+            return result;
+        }
+
         Decimal batteryCount = (yearlyConsumption > 5000) ? 2 : 1;
 
         Decimal panelTotalCost = panelCount * panel.Product_Catalog__r.Brutto_egysegar__c;
@@ -95,7 +109,7 @@ public class QuoteCalculationEngine {
         Decimal netInvestment = grossTotal; // Ha nincs külön pályázati támogatás mező lekérdezve, a bruttó összeg a nettó
         Decimal paybackYears = yearlySavings > 0 ? (netInvestment / yearlySavings).setScale(2) : 0;
 
-        QuoteCalculationResult result = new QuoteCalculationResult();
+        result.isSuccess = true;
         result.panel = panel;
         result.panelCount = panelCount;
         result.panelTotalCost = panelTotalCost;

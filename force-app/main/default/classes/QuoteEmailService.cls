@@ -31,7 +31,7 @@ public with sharing class QuoteEmailService {
         Id contentDocumentId
     ) {
         if (leadId == null) {
-            throwAura('Hiányzik a Lead azonosító.');
+            throwAura('Hiányzik az azonosító (Lead vagy Quote ID).');
         }
         if (String.isBlank(toAddress)) {
             throwAura('Adj meg címzettet.');
@@ -42,11 +42,13 @@ public with sharing class QuoteEmailService {
         mail.setSubject(String.isBlank(subject) ? '(nincs tárgy)' : subject);
         mail.setHtmlBody(String.isBlank(htmlBody) ? '' : htmlBody);
 
-        // A Lead a levél "kapcsolódó rekordja": így megjelenik a Lead tevékenységei között.
-        // A címzett nem a Lead mentett e-mail címe, hanem a fent megadott cím.
-        mail.setTargetObjectId(leadId);
-        mail.setTreatTargetObjectAsRecipient(false);
-        mail.setSaveAsActivity(true);
+        // A TargetObjectId csak Lead azonosítóra állítható be. Az ellenőrzést előre végezzük el,
+        // mert a beállítás maga nem dob kivételt, a hiba csak a küldéskor jelentkezne.
+        if (leadId.getSObjectType() == Schema.Lead.SObjectType) {
+            mail.setTargetObjectId(leadId);
+            mail.setTreatTargetObjectAsRecipient(false);
+            mail.setSaveAsActivity(true);
+        }
 
         // Ellenőrzött feladó cím (Organization-Wide Email Address), ha van
         if (String.isNotBlank(FROM_ADDRESS)) {
@@ -86,6 +88,40 @@ public with sharing class QuoteEmailService {
                 ? results[0].getErrors()[0].getMessage()
                 : 'ismeretlen hiba';
             throwAura('Az e-mail küldése sikertelen: ' + detail);
+        }
+
+        // A sikeres küldés után az árajánlat státuszának és időbélyegének frissítése
+        markQuoteAsSent(leadId);
+    }
+
+    // A legfrissebb árajánlat megkeresése a kapott azonosító alapján (Lead vagy Quote ID),
+    // majd a státusz és az elküldés időpontjának rögzítése. Hiba esetén látható üzenetet adunk.
+    // A metódus Lightning komponensből is hívható (például a szabványos e-mail szerkesztő megnyitásakor).
+    @AuraEnabled
+    public static void markQuoteAsSent(Id recordId) {
+        if (recordId == null) {
+            throwAura('Hiányzik az azonosító (Lead vagy Quote ID).');
+        }
+
+        List<Quote__c> quotes = [
+            SELECT Id, Status__c, Ajanlat_elkuldvenek_idopontja__c
+            FROM Quote__c
+            WHERE Lead__c = :recordId OR Id = :recordId
+            ORDER BY CreatedDate DESC
+            LIMIT 1
+        ];
+
+        if (quotes.isEmpty()) {
+            throwAura('Nem található árajánlat ehhez a rekordhoz (ID: ' + recordId + '), ezért az állapota nem frissült.');
+        }
+
+        Quote__c q = quotes[0];
+        q.Status__c = 'Elküldve';
+        q.Ajanlat_elkuldvenek_idopontja__c = System.now();
+
+        Database.SaveResult sr = Database.update(q, false);
+        if (!sr.isSuccess()) {
+            throwAura('Az árajánlat frissítése sikertelen: ' + sr.getErrors()[0].getMessage());
         }
     }
 

@@ -20,4 +20,6 @@ public class QuoteCalculationResult {
     public Decimal yearlySavings { get; set; }
     public Decimal netInvestment { get; set; }
     public Decimal paybackYears { get; set; }
+    public Boolean isSuccess { get; set; }
+    public String errorMessage { get; set; }
 }

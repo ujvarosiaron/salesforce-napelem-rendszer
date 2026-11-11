@@ -1,6 +1,8 @@
 import { LightningElement, api } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { encodeDefaultFieldValues } from 'lightning/pageReferenceUtils';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import markQuoteAsSent from '@salesforce/apex/QuoteEmailService.markQuoteAsSent';
 
 export default class OpenEmailComposer extends NavigationMixin(LightningElement) {
     @api recordId;
@@ -9,6 +11,7 @@ export default class OpenEmailComposer extends NavigationMixin(LightningElement)
     @api emailBody;
 
     _opened = false;
+    _marked = false;
 
     // Az HtmlBody HTML-t vár: a sima szövegben lévő sortöréseket (\n) a HTML nem jeleníti meg.
     // Ha a szöveg már tartalmaz HTML blokk-tageket, békén hagyjuk, különben bekezdésekre bontjuk.
@@ -61,10 +64,35 @@ export default class OpenEmailComposer extends NavigationMixin(LightningElement)
 
             this[NavigationMixin.Navigate](pageRef);
             this._opened = true;
+            this.updateQuoteStatus();
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Hiba az e-mail szerkesztő megnyitásakor: ', error);
         }
+    }
+
+    // A szabványos szerkesztő megnyitásakor az árajánlat státuszát és időbélyegét is rögzítjük.
+    // A hibát látható üzenetben jelezzük, nem nyeljük el.
+    updateQuoteStatus() {
+        if (this._marked || !this.recordId) {
+            return;
+        }
+        this._marked = true;
+
+        markQuoteAsSent({ recordId: this.recordId }).catch((error) => {
+            const message =
+                (error && error.body && error.body.message) ||
+                (error && error.message) ||
+                'Ismeretlen hiba az árajánlat frissítésekor.';
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Az árajánlat állapota nem frissült',
+                    message,
+                    variant: 'error',
+                    mode: 'sticky'
+                })
+            );
+        });
     }
 
     // A gomb kézi indításhoz (ha a Flow lábléc el van rejtve)
